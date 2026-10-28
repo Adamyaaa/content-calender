@@ -1,0 +1,1751 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Company Content Calendar & Strategy Command Center</title>
+  <!-- Tailwind CSS CDN -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      darkMode: 'class',
+      theme: {
+        extend: {
+          colors: {
+            brand: {
+              50: '#eef2ff',
+              100: '#e0e7ff',
+              500: '#6366f1',
+              600: '#4f46e5',
+              700: '#4338ca',
+            }
+          }
+        }
+      }
+    }
+  </script>
+  <!-- Lucide Icons -->
+  <script src="https://unpkg.com/lucide@latest"></script>
+  <style>
+    /* Custom scrollbar */
+    ::-webkit-scrollbar { width: 6px; height: 6px; }
+    ::-webkit-scrollbar-track { background: #f1f5f9; }
+    ::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 4px; }
+    ::-webkit-scrollbar-thumb:hover { background: #94a3b8; }
+    .kanban-col { min-height: calc(100vh - 290px); }
+    
+    @media print {
+      header, .no-print, button, #postModal, #aiModal, #settingsModal { display: none !important; }
+      body { background: white !important; font-size: 10pt; }
+      .view-panel { display: block !important; }
+    }
+  </style>
+</head>
+<body class="bg-slate-50 text-slate-800 font-sans antialiased min-h-screen flex flex-col">
+
+  <!-- TOP NAVIGATION / HEADER -->
+  <header class="bg-white border-b border-slate-200 sticky top-0 z-30 shadow-xs">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+      <div class="flex items-center justify-between h-16">
+        
+        <!-- Logo / Company Profile -->
+        <div class="flex items-center gap-3">
+          <div class="w-10 h-10 rounded-xl bg-gradient-to-tr from-indigo-600 to-violet-500 flex items-center justify-center text-white shadow-md shadow-indigo-100">
+            <i data-lucide="calendar" class="w-5 h-5"></i>
+          </div>
+          <div>
+            <div class="flex items-center gap-2">
+              <h1 id="headerCompanyName" class="text-lg font-bold text-slate-900 tracking-tight">Acme Corp ContentOps</h1>
+              <span id="headerNicheBadge" class="text-xs bg-indigo-50 text-indigo-700 font-semibold px-2 py-0.5 rounded-full border border-indigo-200">B2B SaaS</span>
+            </div>
+            <p id="headerTagline" class="text-xs text-slate-500">Master Company Content Calendar & Publishing Command Center</p>
+          </div>
+        </div>
+
+        <!-- Quick Search & Actions -->
+        <div class="flex items-center gap-2.5">
+          <!-- Search -->
+          <div class="relative hidden sm:block">
+            <i data-lucide="search" class="w-4 h-4 absolute left-3 top-2.5 text-slate-400"></i>
+            <input type="text" id="globalSearch" placeholder="Search topics, copy, tags..." 
+                   class="pl-9 pr-4 py-1.5 text-xs bg-slate-100 border border-slate-200 rounded-lg focus:bg-white focus:outline-none focus:ring-2 focus:ring-indigo-500 w-48 transition-all">
+          </div>
+
+          <!-- Auto-Plan 30 Days Button -->
+          <button onclick="triggerAutoPlan30Days()" title="Generate 4-week balanced content plan" class="hidden md:inline-flex items-center gap-1.5 bg-gradient-to-r from-purple-50 to-indigo-50 hover:from-purple-100 hover:to-indigo-100 text-purple-700 border border-purple-200 text-xs px-2.5 py-1.5 rounded-lg font-medium transition shadow-2xs">
+            <i data-lucide="sparkles" class="w-3.5 h-3.5 text-purple-600"></i>
+            <span>Auto-Plan Month</span>
+          </button>
+
+          <!-- Company Settings Button -->
+          <button onclick="openSettingsModal()" title="Customize Company, Tone & Team" class="p-1.5 text-slate-600 hover:text-indigo-600 hover:bg-slate-100 rounded-lg border border-slate-200 text-xs transition">
+            <i data-lucide="settings" class="w-4 h-4"></i>
+          </button>
+
+          <!-- Export / Import dropdown buttons -->
+          <div class="flex items-center gap-1 bg-slate-100 p-1 rounded-lg border border-slate-200">
+            <button onclick="exportCSV()" title="Export as CSV (Excel/Sheets)" class="p-1.5 text-slate-600 hover:text-indigo-600 hover:bg-white rounded transition text-xs flex items-center gap-1 font-medium">
+              <i data-lucide="file-spreadsheet" class="w-4 h-4"></i>
+              <span class="hidden lg:inline">CSV</span>
+            </button>
+            <button onclick="exportJSON()" title="Backup as JSON" class="p-1.5 text-slate-600 hover:text-indigo-600 hover:bg-white rounded transition text-xs flex items-center gap-1 font-medium">
+              <i data-lucide="download" class="w-4 h-4"></i>
+              <span class="hidden lg:inline">Backup</span>
+            </button>
+            <label title="Import JSON / CSV" class="p-1.5 text-slate-600 hover:text-indigo-600 hover:bg-white rounded transition text-xs flex items-center gap-1 font-medium cursor-pointer">
+              <i data-lucide="upload" class="w-4 h-4"></i>
+              <span class="hidden lg:inline">Import</span>
+              <input type="file" id="importInput" accept=".json,.csv" class="hidden" onchange="handleFileImport(event)">
+            </label>
+          </div>
+
+          <!-- Create Post Button -->
+          <button onclick="openPostModal()" class="inline-flex items-center gap-2 bg-indigo-600 hover:bg-indigo-700 text-white font-medium text-xs sm:text-sm px-3.5 py-2 rounded-lg shadow-sm shadow-indigo-200 transition">
+            <i data-lucide="plus-circle" class="w-4 h-4"></i>
+            <span>New Post</span>
+          </button>
+        </div>
+      </div>
+    </div>
+  </header>
+
+  <!-- KPI SUMMARY STATS BAR -->
+  <section class="bg-white border-b border-slate-200 py-3.5 no-print">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+      <div class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3">
+        
+        <div class="bg-slate-50 border border-slate-200 rounded-xl p-3 flex items-center gap-3">
+          <div class="p-2 bg-indigo-100 text-indigo-600 rounded-lg"><i data-lucide="layers" class="w-4 h-4"></i></div>
+          <div>
+            <p class="text-[11px] font-semibold text-slate-500 uppercase tracking-wider">Total Posts</p>
+            <p id="statTotal" class="text-lg font-bold text-slate-900">0</p>
+          </div>
+        </div>
+
+        <div class="bg-slate-50 border border-slate-200 rounded-xl p-3 flex items-center gap-3">
+          <div class="p-2 bg-amber-100 text-amber-700 rounded-lg"><i data-lucide="clock" class="w-4 h-4"></i></div>
+          <div>
+            <p class="text-[11px] font-semibold text-slate-500 uppercase tracking-wider">Scheduled</p>
+            <p id="statScheduled" class="text-lg font-bold text-slate-900">0</p>
+          </div>
+        </div>
+
+        <div class="bg-slate-50 border border-slate-200 rounded-xl p-3 flex items-center gap-3">
+          <div class="p-2 bg-blue-100 text-blue-700 rounded-lg"><i data-lucide="file-edit" class="w-4 h-4"></i></div>
+          <div>
+            <p class="text-[11px] font-semibold text-slate-500 uppercase tracking-wider">In Progress</p>
+            <p id="statInProgress" class="text-lg font-bold text-slate-900">0</p>
+          </div>
+        </div>
+
+        <div class="bg-slate-50 border border-slate-200 rounded-xl p-3 flex items-center gap-3">
+          <div class="p-2 bg-emerald-100 text-emerald-700 rounded-lg"><i data-lucide="check-circle-2" class="w-4 h-4"></i></div>
+          <div>
+            <p class="text-[11px] font-semibold text-slate-500 uppercase tracking-wider">Published</p>
+            <p id="statPublished" class="text-lg font-bold text-slate-900">0</p>
+          </div>
+        </div>
+
+        <div class="bg-slate-50 border border-slate-200 rounded-xl p-3 flex items-center gap-3">
+          <div class="p-2 bg-purple-100 text-purple-700 rounded-lg"><i data-lucide="eye" class="w-4 h-4"></i></div>
+          <div>
+            <p class="text-[11px] font-semibold text-slate-500 uppercase tracking-wider">Est. Views</p>
+            <p id="statImpressions" class="text-lg font-bold text-slate-900">0</p>
+          </div>
+        </div>
+
+        <div class="bg-slate-50 border border-slate-200 rounded-xl p-3 flex items-center gap-3">
+          <div class="p-2 bg-rose-100 text-rose-700 rounded-lg"><i data-lucide="pie-chart" class="w-4 h-4"></i></div>
+          <div>
+            <p class="text-[11px] font-semibold text-slate-500 uppercase tracking-wider">Pillars Met</p>
+            <p id="statPillars" class="text-lg font-bold text-slate-900">4 / 4</p>
+          </div>
+        </div>
+
+      </div>
+    </div>
+  </section>
+
+  <!-- VIEW TABS & FILTERS BAR -->
+  <section class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-4 pb-2 w-full no-print">
+    <div class="flex flex-col md:flex-row md:items-center justify-between gap-3 border-b border-slate-200 pb-3">
+      
+      <!-- Primary View Switcher -->
+      <div class="flex items-center gap-1 bg-slate-200/70 p-1 rounded-xl text-xs font-medium">
+        <button onclick="switchView('calendar')" id="btnViewCalendar" class="view-tab-btn flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-white text-indigo-700 shadow-xs">
+          <i data-lucide="calendar" class="w-4 h-4"></i>
+          <span>Calendar</span>
+        </button>
+        <button onclick="switchView('kanban')" id="btnViewKanban" class="view-tab-btn flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-slate-600 hover:text-slate-900">
+          <i data-lucide="kanban" class="w-4 h-4"></i>
+          <span>Kanban Board</span>
+        </button>
+        <button onclick="switchView('table')" id="btnViewTable" class="view-tab-btn flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-slate-600 hover:text-slate-900">
+          <i data-lucide="list" class="w-4 h-4"></i>
+          <span>List View</span>
+        </button>
+        <button onclick="switchView('strategy')" id="btnViewStrategy" class="view-tab-btn flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-slate-600 hover:text-slate-900">
+          <i data-lucide="target" class="w-4 h-4"></i>
+          <span>Strategy & Pillars</span>
+        </button>
+      </div>
+
+      <!-- Filter Controls -->
+      <div class="flex flex-wrap items-center gap-2 text-xs">
+        <!-- Platform filter -->
+        <select id="filterPlatform" onchange="renderCurrentView()" class="bg-white border border-slate-200 rounded-lg px-2.5 py-1.5 text-slate-700 font-medium focus:outline-none focus:ring-1 focus:ring-indigo-500">
+          <option value="ALL">All Platforms</option>
+          <option value="LinkedIn">LinkedIn</option>
+          <option value="X (Twitter)">X (Twitter)</option>
+          <option value="Instagram">Instagram</option>
+          <option value="YouTube">YouTube</option>
+          <option value="Newsletter">Newsletter</option>
+          <option value="Blog">Blog</option>
+          <option value="TikTok">TikTok</option>
+        </select>
+
+        <!-- Pillar filter -->
+        <select id="filterPillar" onchange="renderCurrentView()" class="bg-white border border-slate-200 rounded-lg px-2.5 py-1.5 text-slate-700 font-medium focus:outline-none focus:ring-1 focus:ring-indigo-500">
+          <option value="ALL">All Pillars</option>
+          <option value="Educational">Educational (40%)</option>
+          <option value="Thought Leadership">Thought Leadership (30%)</option>
+          <option value="Social Proof">Social Proof (20%)</option>
+          <option value="Product Updates">Product Updates (10%)</option>
+          <option value="Company Culture">Company Culture</option>
+        </select>
+
+        <!-- Status filter -->
+        <select id="filterStatus" onchange="renderCurrentView()" class="bg-white border border-slate-200 rounded-lg px-2.5 py-1.5 text-slate-700 font-medium focus:outline-none focus:ring-1 focus:ring-indigo-500">
+          <option value="ALL">All Statuses</option>
+          <option value="Idea">Idea</option>
+          <option value="Drafting">Drafting</option>
+          <option value="In Review">In Review</option>
+          <option value="Scheduled">Scheduled</option>
+          <option value="Published">Published</option>
+        </select>
+
+        <button onclick="resetFilters()" class="text-slate-500 hover:text-slate-800 text-xs px-2 py-1 font-medium underline">
+          Reset
+        </button>
+
+        <!-- Print Executive View -->
+        <button onclick="window.print()" title="Print / PDF Export" class="p-1.5 text-slate-600 hover:text-indigo-600 hover:bg-slate-100 rounded-lg border border-slate-200 transition">
+          <i data-lucide="printer" class="w-4 h-4"></i>
+        </button>
+      </div>
+
+    </div>
+  </section>
+
+  <!-- MAIN VIEW CONTENT CONTAINER -->
+  <main class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4 flex-1 w-full">
+
+    <!-- 1. CALENDAR VIEW -->
+    <div id="calendarViewContainer" class="view-panel">
+      <!-- Calendar Controls -->
+      <div class="flex items-center justify-between bg-white p-4 rounded-t-xl border border-slate-200 border-b-0">
+        <div class="flex items-center gap-3">
+          <h2 id="calendarMonthYear" class="text-lg font-bold text-slate-900">October 2026</h2>
+          <div class="flex items-center gap-1 bg-slate-100 p-0.5 rounded-lg border border-slate-200">
+            <button onclick="changeMonth(-1)" class="p-1 hover:bg-white rounded text-slate-600 transition"><i data-lucide="chevron-left" class="w-4 h-4"></i></button>
+            <button onclick="goToCurrentMonth()" class="px-2 py-0.5 text-xs font-semibold text-slate-700 hover:bg-white rounded transition">Today</button>
+            <button onclick="changeMonth(1)" class="p-1 hover:bg-white rounded text-slate-600 transition"><i data-lucide="chevron-right" class="w-4 h-4"></i></button>
+          </div>
+        </div>
+        
+        <!-- Legend -->
+        <div class="hidden md:flex items-center gap-3 text-xs text-slate-500">
+          <span class="flex items-center gap-1.5"><span class="w-2.5 h-2.5 rounded-full bg-blue-600"></span>LinkedIn</span>
+          <span class="flex items-center gap-1.5"><span class="w-2.5 h-2.5 rounded-full bg-slate-900"></span>X</span>
+          <span class="flex items-center gap-1.5"><span class="w-2.5 h-2.5 rounded-full bg-pink-500"></span>Instagram</span>
+          <span class="flex items-center gap-1.5"><span class="w-2.5 h-2.5 rounded-full bg-red-600"></span>YouTube</span>
+          <span class="flex items-center gap-1.5"><span class="w-2.5 h-2.5 rounded-full bg-emerald-600"></span>Newsletter</span>
+        </div>
+      </div>
+
+      <!-- Day names -->
+      <div class="grid grid-cols-7 bg-slate-100 border-x border-slate-200 text-center py-2 text-xs font-semibold text-slate-600 uppercase tracking-wider">
+        <div>Sun</div><div>Mon</div><div>Tue</div><div>Wed</div><div>Thu</div><div>Fri</div><div>Sat</div>
+      </div>
+
+      <!-- Calendar Grid Cells -->
+      <div id="calendarGrid" class="grid grid-cols-7 bg-slate-200 gap-px border border-slate-200 rounded-b-xl overflow-hidden shadow-xs">
+        <!-- Rendered dynamically by JS -->
+      </div>
+    </div>
+
+    <!-- 2. KANBAN BOARD VIEW -->
+    <div id="kanbanViewContainer" class="view-panel hidden">
+      <div class="grid grid-cols-1 md:grid-cols-5 gap-4">
+        
+        <!-- Col: Idea -->
+        <div id="kanban-wrapper-Idea" 
+             ondragover="handleDragOver(event)" 
+             ondragenter="handleDragEnter(event, 'Idea')" 
+             ondragleave="handleDragLeave(event, 'Idea')" 
+             ondrop="handleDrop(event, 'Idea')" 
+             class="bg-slate-100/80 rounded-xl p-3 border border-slate-200 flex flex-col kanban-col transition-all duration-150">
+          <div class="flex items-center justify-between pb-3 mb-2 border-b border-slate-200">
+            <div class="flex items-center gap-2">
+              <span class="w-2.5 h-2.5 rounded-full bg-purple-500"></span>
+              <h3 class="font-bold text-xs uppercase tracking-wider text-slate-700">1. Brainstorm / Ideas</h3>
+            </div>
+            <span id="badgeCount-Idea" class="text-xs bg-slate-200 font-bold px-2 py-0.5 rounded-full text-slate-600">0</span>
+          </div>
+          <div id="kanban-Idea" class="space-y-2.5 flex-1 overflow-y-auto pr-1"></div>
+        </div>
+
+        <!-- Col: Drafting -->
+        <div id="kanban-wrapper-Drafting" 
+             ondragover="handleDragOver(event)" 
+             ondragenter="handleDragEnter(event, 'Drafting')" 
+             ondragleave="handleDragLeave(event, 'Drafting')" 
+             ondrop="handleDrop(event, 'Drafting')" 
+             class="bg-slate-100/80 rounded-xl p-3 border border-slate-200 flex flex-col kanban-col transition-all duration-150">
+          <div class="flex items-center justify-between pb-3 mb-2 border-b border-slate-200">
+            <div class="flex items-center gap-2">
+              <span class="w-2.5 h-2.5 rounded-full bg-blue-500"></span>
+              <h3 class="font-bold text-xs uppercase tracking-wider text-slate-700">2. Drafting</h3>
+            </div>
+            <span id="badgeCount-Drafting" class="text-xs bg-slate-200 font-bold px-2 py-0.5 rounded-full text-slate-600">0</span>
+          </div>
+          <div id="kanban-Drafting" class="space-y-2.5 flex-1 overflow-y-auto pr-1"></div>
+        </div>
+
+        <!-- Col: In Review -->
+        <div id="kanban-wrapper-In-Review" 
+             ondragover="handleDragOver(event)" 
+             ondragenter="handleDragEnter(event, 'In Review')" 
+             ondragleave="handleDragLeave(event, 'In Review')" 
+             ondrop="handleDrop(event, 'In Review')" 
+             class="bg-slate-100/80 rounded-xl p-3 border border-slate-200 flex flex-col kanban-col transition-all duration-150">
+          <div class="flex items-center justify-between pb-3 mb-2 border-b border-slate-200">
+            <div class="flex items-center gap-2">
+              <span class="w-2.5 h-2.5 rounded-full bg-amber-500"></span>
+              <h3 class="font-bold text-xs uppercase tracking-wider text-slate-700">3. In Review</h3>
+            </div>
+            <span id="badgeCount-In-Review" class="text-xs bg-slate-200 font-bold px-2 py-0.5 rounded-full text-slate-600">0</span>
+          </div>
+          <div id="kanban-In Review" class="space-y-2.5 flex-1 overflow-y-auto pr-1"></div>
+        </div>
+
+        <!-- Col: Scheduled -->
+        <div id="kanban-wrapper-Scheduled" 
+             ondragover="handleDragOver(event)" 
+             ondragenter="handleDragEnter(event, 'Scheduled')" 
+             ondragleave="handleDragLeave(event, 'Scheduled')" 
+             ondrop="handleDrop(event, 'Scheduled')" 
+             class="bg-slate-100/80 rounded-xl p-3 border border-slate-200 flex flex-col kanban-col transition-all duration-150">
+          <div class="flex items-center justify-between pb-3 mb-2 border-b border-slate-200">
+            <div class="flex items-center gap-2">
+              <span class="w-2.5 h-2.5 rounded-full bg-teal-500"></span>
+              <h3 class="font-bold text-xs uppercase tracking-wider text-slate-700">4. Ready / Scheduled</h3>
+            </div>
+            <span id="badgeCount-Scheduled" class="text-xs bg-slate-200 font-bold px-2 py-0.5 rounded-full text-slate-600">0</span>
+          </div>
+          <div id="kanban-Scheduled" class="space-y-2.5 flex-1 overflow-y-auto pr-1"></div>
+        </div>
+
+        <!-- Col: Published -->
+        <div id="kanban-wrapper-Published" 
+             ondragover="handleDragOver(event)" 
+             ondragenter="handleDragEnter(event, 'Published')" 
+             ondragleave="handleDragLeave(event, 'Published')" 
+             ondrop="handleDrop(event, 'Published')" 
+             class="bg-slate-100/80 rounded-xl p-3 border border-slate-200 flex flex-col kanban-col transition-all duration-150">
+          <div class="flex items-center justify-between pb-3 mb-2 border-b border-slate-200">
+            <div class="flex items-center gap-2">
+              <span class="w-2.5 h-2.5 rounded-full bg-emerald-500"></span>
+              <h3 class="font-bold text-xs uppercase tracking-wider text-slate-700">5. Published</h3>
+            </div>
+            <span id="badgeCount-Published" class="text-xs bg-slate-200 font-bold px-2 py-0.5 rounded-full text-slate-600">0</span>
+          </div>
+          <div id="kanban-Published" class="space-y-2.5 flex-1 overflow-y-auto pr-1"></div>
+        </div>
+
+      </div>
+    </div>
+
+    <!-- 3. TABLE / LIST VIEW -->
+    <div id="tableViewContainer" class="view-panel hidden bg-white rounded-xl border border-slate-200 overflow-hidden shadow-xs">
+      <div class="overflow-x-auto">
+        <table class="w-full text-left text-xs border-collapse">
+          <thead class="bg-slate-50 border-b border-slate-200 text-slate-600 font-semibold uppercase tracking-wider">
+            <tr>
+              <th class="py-3 px-4">Post Title & Hook</th>
+              <th class="py-3 px-3">Platform</th>
+              <th class="py-3 px-3">Content Pillar</th>
+              <th class="py-3 px-3">Schedule Date</th>
+              <th class="py-3 px-3">Status</th>
+              <th class="py-3 px-3">Assignee</th>
+              <th class="py-3 px-3 text-right">Actions</th>
+            </tr>
+          </thead>
+          <tbody id="tableBody" class="divide-y divide-slate-100">
+            <!-- Dynamic rows -->
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- 4. STRATEGY & PILLARS VIEW -->
+    <div id="strategyViewContainer" class="view-panel hidden space-y-6">
+      
+      <!-- Distribution targets vs Current -->
+      <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+        
+        <!-- Pillar Breakdown -->
+        <div class="bg-white p-5 rounded-xl border border-slate-200 shadow-xs">
+          <div class="flex items-center justify-between mb-2">
+            <h3 class="font-bold text-slate-900 flex items-center gap-2">
+              <i data-lucide="pie-chart" class="w-5 h-5 text-indigo-600"></i>
+              Content Pillar Allocation (The 40-30-20-10 Model)
+            </h3>
+          </div>
+          <p class="text-xs text-slate-500 mb-4">
+            Balanced company content prevents brand fatigue and builds sustained inbound demand.
+          </p>
+
+          <div class="space-y-4">
+            <div>
+              <div class="flex justify-between text-xs font-semibold mb-1">
+                <span class="text-indigo-700">1. Educational & How-To (Target: 40%)</span>
+                <span id="pillarPctEducational" class="text-slate-600">0%</span>
+              </div>
+              <div class="w-full bg-slate-100 rounded-full h-2.5 overflow-hidden">
+                <div id="pillarBarEducational" class="bg-indigo-600 h-2.5 rounded-full transition-all duration-300" style="width: 40%"></div>
+              </div>
+            </div>
+
+            <div>
+              <div class="flex justify-between text-xs font-semibold mb-1">
+                <span class="text-violet-700">2. Thought Leadership & Perspective (Target: 30%)</span>
+                <span id="pillarPctLeadership" class="text-slate-600">0%</span>
+              </div>
+              <div class="w-full bg-slate-100 rounded-full h-2.5 overflow-hidden">
+                <div id="pillarBarLeadership" class="bg-violet-600 h-2.5 rounded-full transition-all duration-300" style="width: 30%"></div>
+              </div>
+            </div>
+
+            <div>
+              <div class="flex justify-between text-xs font-semibold mb-1">
+                <span class="text-emerald-700">3. Social Proof & Customer Stories (Target: 20%)</span>
+                <span id="pillarPctProof" class="text-slate-600">0%</span>
+              </div>
+              <div class="w-full bg-slate-100 rounded-full h-2.5 overflow-hidden">
+                <div id="pillarBarProof" class="bg-emerald-600 h-2.5 rounded-full transition-all duration-300" style="width: 20%"></div>
+              </div>
+            </div>
+
+            <div>
+              <div class="flex justify-between text-xs font-semibold mb-1">
+                <span class="text-amber-700">4. Product Updates & Culture (Target: 10%)</span>
+                <span id="pillarPctProduct" class="text-slate-600">0%</span>
+              </div>
+              <div class="w-full bg-slate-100 rounded-full h-2.5 overflow-hidden">
+                <div id="pillarBarProduct" class="bg-amber-500 h-2.5 rounded-full transition-all duration-300" style="width: 10%"></div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Optimal Posting Times Benchmarks -->
+        <div class="bg-white p-5 rounded-xl border border-slate-200 shadow-xs">
+          <h3 class="font-bold text-slate-900 mb-2 flex items-center gap-2">
+            <i data-lucide="clock" class="w-5 h-5 text-indigo-600"></i>
+            Optimal Posting Windows & Cadence
+          </h3>
+          <p class="text-xs text-slate-500 mb-4">Recommended publishing rhythm for high-growth teams:</p>
+          
+          <div class="space-y-3 text-xs">
+            <div class="flex items-center justify-between p-2.5 rounded-lg bg-slate-50 border border-slate-100">
+              <div class="flex items-center gap-2">
+                <span class="w-2.5 h-2.5 rounded-full bg-blue-600"></span>
+                <span class="font-bold text-slate-800">LinkedIn</span>
+              </div>
+              <span class="text-slate-600 font-medium">3–5x / week</span>
+              <span class="text-indigo-600 font-semibold bg-indigo-50 px-2 py-0.5 rounded">Tue-Thu 8:00 AM - 10:00 AM</span>
+            </div>
+
+            <div class="flex items-center justify-between p-2.5 rounded-lg bg-slate-50 border border-slate-100">
+              <div class="flex items-center gap-2">
+                <span class="w-2.5 h-2.5 rounded-full bg-slate-900"></span>
+                <span class="font-bold text-slate-800">X (Twitter)</span>
+              </div>
+              <span class="text-slate-600 font-medium">1 thread + 4 singles</span>
+              <span class="text-indigo-600 font-semibold bg-indigo-50 px-2 py-0.5 rounded">Mon-Fri 9:00 AM & 2:00 PM</span>
+            </div>
+
+            <div class="flex items-center justify-between p-2.5 rounded-lg bg-slate-50 border border-slate-100">
+              <div class="flex items-center gap-2">
+                <span class="w-2.5 h-2.5 rounded-full bg-pink-500"></span>
+                <span class="font-bold text-slate-800">Instagram</span>
+              </div>
+              <span class="text-slate-600 font-medium">3 reels / carousels</span>
+              <span class="text-indigo-600 font-semibold bg-indigo-50 px-2 py-0.5 rounded">Wed-Fri 12:00 PM - 1:00 PM</span>
+            </div>
+
+            <div class="flex items-center justify-between p-2.5 rounded-lg bg-slate-50 border border-slate-100">
+              <div class="flex items-center gap-2">
+                <span class="w-2.5 h-2.5 rounded-full bg-emerald-600"></span>
+                <span class="font-bold text-slate-800">Newsletter</span>
+              </div>
+              <span class="text-slate-600 font-medium">1 edition / week</span>
+              <span class="text-indigo-600 font-semibold bg-indigo-50 px-2 py-0.5 rounded">Tue or Thu 10:00 AM</span>
+            </div>
+          </div>
+        </div>
+
+      </div>
+
+      <!-- Strategy Walkthrough Cards -->
+      <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+        <div class="bg-white p-5 rounded-xl border border-slate-200 shadow-xs">
+          <div class="w-8 h-8 rounded-lg bg-blue-100 text-blue-600 flex items-center justify-center font-bold text-sm mb-3">1</div>
+          <h4 class="font-bold text-slate-900 text-sm mb-1">Batch Content Creation</h4>
+          <p class="text-xs text-slate-600 leading-relaxed">
+            Dedicate 2 hours every Monday to outline and draft the upcoming week's content. Avoid daily panic posting.
+          </p>
+        </div>
+
+        <div class="bg-white p-5 rounded-xl border border-slate-200 shadow-xs">
+          <div class="w-8 h-8 rounded-lg bg-purple-100 text-purple-600 flex items-center justify-center font-bold text-sm mb-3">2</div>
+          <h4 class="font-bold text-slate-900 text-sm mb-1">The 1-to-10 Repurposing Engine</h4>
+          <p class="text-xs text-slate-600 leading-relaxed">
+            One comprehensive blog or video turns into: 1 LinkedIn Carousel, 1 X thread, 1 short video, 2 quote cards, and 1 newsletter issue.
+          </p>
+        </div>
+
+        <div class="bg-white p-5 rounded-xl border border-slate-200 shadow-xs">
+          <div class="w-8 h-8 rounded-lg bg-emerald-100 text-emerald-600 flex items-center justify-center font-bold text-sm mb-3">3</div>
+          <h4 class="font-bold text-slate-900 text-sm mb-1">The First 60-Minute Rule</h4>
+          <p class="text-xs text-slate-600 leading-relaxed">
+            Algorithms reward early velocity. Have team members reply to all comments within 1 hour of publishing.
+          </p>
+        </div>
+      </div>
+
+    </div>
+
+  </main>
+
+  <!-- POST EDITOR / DETAILS MODAL -->
+  <div id="postModal" class="fixed inset-0 z-50 bg-slate-900/50 backdrop-blur-xs flex items-center justify-center p-4 hidden">
+    <div class="bg-white rounded-2xl shadow-2xl max-w-2xl w-full max-h-[92vh] flex flex-col overflow-hidden animate-in fade-in zoom-in duration-150">
+      
+      <!-- Modal Header -->
+      <div class="px-6 py-4 border-b border-slate-200 flex items-center justify-between bg-slate-50">
+        <div class="flex items-center gap-2">
+          <div class="p-1.5 bg-indigo-100 text-indigo-600 rounded-lg">
+            <i data-lucide="edit-3" class="w-4 h-4"></i>
+          </div>
+          <h3 id="modalTitle" class="font-bold text-slate-900 text-sm sm:text-base">Create New Content Post</h3>
+        </div>
+        <div class="flex items-center gap-2">
+          <button type="button" onclick="openAiAssistantModal()" class="inline-flex items-center gap-1.5 bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-700 hover:to-indigo-700 text-white font-semibold text-xs px-2.5 py-1.5 rounded-lg shadow-xs transition">
+            <i data-lucide="sparkles" class="w-3.5 h-3.5"></i>
+            <span>AI Copywriter</span>
+          </button>
+          <button onclick="closePostModal()" class="text-slate-400 hover:text-slate-600 p-1 rounded-lg">
+            <i data-lucide="x" class="w-5 h-5"></i>
+          </button>
+        </div>
+      </div>
+
+      <!-- Modal Body (Form) -->
+      <form id="postForm" onsubmit="handleSavePost(event)" class="p-6 space-y-4 overflow-y-auto flex-1 text-xs">
+        <input type="hidden" id="postId">
+
+        <!-- Title -->
+        <div>
+          <label class="block font-semibold text-slate-700 mb-1">Post Title / Main Hook *</label>
+          <input type="text" id="postTitle" required placeholder="e.g., 5 Pitfalls in Scaling Engineering Teams" 
+                 class="w-full px-3 py-2 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 font-medium text-slate-900">
+        </div>
+
+        <!-- 3-Column: Platform, Pillar, Status -->
+        <div class="grid grid-cols-1 sm:grid-cols-3 gap-3">
+          <div>
+            <label class="block font-semibold text-slate-700 mb-1">Target Platform *</label>
+            <select id="postPlatform" onchange="updateCharCountLimit()" required class="w-full px-3 py-2 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 font-medium">
+              <option value="LinkedIn">LinkedIn</option>
+              <option value="X (Twitter)">X (Twitter)</option>
+              <option value="Instagram">Instagram</option>
+              <option value="YouTube">YouTube</option>
+              <option value="Newsletter">Newsletter</option>
+              <option value="Blog">Blog</option>
+              <option value="TikTok">TikTok</option>
+            </select>
+          </div>
+
+          <div>
+            <label class="block font-semibold text-slate-700 mb-1">Content Pillar *</label>
+            <select id="postPillar" required class="w-full px-3 py-2 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 font-medium">
+              <option value="Educational">Educational (40%)</option>
+              <option value="Thought Leadership">Thought Leadership (30%)</option>
+              <option value="Social Proof">Social Proof (20%)</option>
+              <option value="Product Updates">Product Updates (10%)</option>
+              <option value="Company Culture">Company Culture</option>
+            </select>
+          </div>
+
+          <div>
+            <label class="block font-semibold text-slate-700 mb-1">Workflow Status *</label>
+            <select id="postStatus" required class="w-full px-3 py-2 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 font-medium">
+              <option value="Idea">💡 Idea / Concept</option>
+              <option value="Drafting">✍️ Drafting</option>
+              <option value="In Review">🔍 In Review</option>
+              <option value="Scheduled">⏰ Ready / Scheduled</option>
+              <option value="Published">🚀 Published</option>
+            </select>
+          </div>
+        </div>
+
+        <!-- 3-Column: Date, Time, Assignee -->
+        <div class="grid grid-cols-1 sm:grid-cols-3 gap-3">
+          <div>
+            <label class="block font-semibold text-slate-700 mb-1">Publish Date *</label>
+            <input type="date" id="postDate" required class="w-full px-3 py-2 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500">
+          </div>
+          <div>
+            <label class="block font-semibold text-slate-700 mb-1">Publish Time</label>
+            <input type="time" id="postTime" value="09:00" class="w-full px-3 py-2 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500">
+          </div>
+          <div>
+            <label class="block font-semibold text-slate-700 mb-1">Assignee / Owner</label>
+            <select id="postAssignee" class="w-full px-3 py-2 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500">
+              <!-- Populated dynamically from team settings -->
+            </select>
+          </div>
+        </div>
+
+        <!-- Copy / Caption Body with live character count -->
+        <div>
+          <div class="flex justify-between items-center mb-1">
+            <label class="font-semibold text-slate-700">Post Copy / Caption</label>
+            <span id="charCountDisplay" class="text-[11px] text-slate-400">0 characters</span>
+          </div>
+          <textarea id="postCopy" rows="4" oninput="updateCharCountLimit()" 
+                    placeholder="Draft your copy, hooks, key takeaways here..."
+                    class="w-full px-3 py-2 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 font-sans leading-relaxed text-slate-800"></textarea>
+          <div id="charLimitWarning" class="text-[11px] text-rose-500 hidden mt-0.5">⚠️ Character limit exceeded for selected platform!</div>
+        </div>
+
+        <!-- Visual Assets & Media Type -->
+        <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+          <div>
+            <label class="block font-semibold text-slate-700 mb-1">Visual Asset / Format</label>
+            <select id="postAsset" class="w-full px-3 py-2 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500">
+              <option value="PDF Document / Carousel">PDF Document / Carousel (Multi-slide)</option>
+              <option value="Single Image / Photo">Single Image / Infographic</option>
+              <option value="Short Video / Reel (30-60s)">Short Video / Reel (30-60s)</option>
+              <option value="Full Video / Walkthrough">Full Video / Walkthrough</option>
+              <option value="Text Only">Text Only / Thread</option>
+            </select>
+          </div>
+          <div>
+            <label class="block font-semibold text-slate-700 mb-1">Call to Action (CTA)</label>
+            <input type="text" id="postCta" placeholder="e.g., Save this post, Link in bio, Leave a comment" 
+                   class="w-full px-3 py-2 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500">
+          </div>
+        </div>
+
+        <!-- Hashtags & Live URL -->
+        <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+          <div>
+            <label class="block font-semibold text-slate-700 mb-1">Hashtags / Tags</label>
+            <input type="text" id="postHashtags" placeholder="#Leadership #Tech #Growth" 
+                   class="w-full px-3 py-2 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500">
+          </div>
+          <div>
+            <label class="block font-semibold text-slate-700 mb-1">Published Live URL (if live)</label>
+            <input type="url" id="postUrl" placeholder="https://..." 
+                   class="w-full px-3 py-2 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500">
+          </div>
+        </div>
+
+        <!-- Metrics (Optional for Published) -->
+        <div class="p-3 bg-slate-50 border border-slate-200 rounded-lg">
+          <p class="font-semibold text-slate-700 mb-2">Performance Tracking (Post-Publishing Analytics)</p>
+          <div class="grid grid-cols-2 gap-3">
+            <div>
+              <label class="block text-slate-500 mb-1">Impressions / Views</label>
+              <input type="number" id="postImpressions" placeholder="0" class="w-full px-3 py-1.5 border border-slate-200 rounded-lg bg-white">
+            </div>
+            <div>
+              <label class="block text-slate-500 mb-1">Engagements (Likes, Comments, Shares)</label>
+              <input type="number" id="postEngagements" placeholder="0" class="w-full px-3 py-1.5 border border-slate-200 rounded-lg bg-white">
+            </div>
+          </div>
+        </div>
+
+        <!-- Modal Actions -->
+        <div class="pt-3 border-t border-slate-200 flex items-center justify-between">
+          <button type="button" id="btnDeletePost" onclick="handleDeletePost()" class="text-rose-600 hover:text-rose-700 font-semibold px-2 py-1 rounded hidden">
+            Delete Post
+          </button>
+          <div class="flex items-center gap-2 ml-auto">
+            <button type="button" onclick="closePostModal()" class="px-4 py-2 border border-slate-200 text-slate-700 font-semibold rounded-lg hover:bg-slate-100 transition">
+              Cancel
+            </button>
+            <button type="submit" class="px-5 py-2 bg-indigo-600 hover:bg-indigo-700 text-white font-semibold rounded-lg shadow-sm transition">
+              Save Post
+            </button>
+          </div>
+        </div>
+
+      </form>
+    </div>
+  </div>
+
+  <!-- AI COPYWRITER & GENERATOR MODAL -->
+  <div id="aiModal" class="fixed inset-0 z-50 bg-slate-900/50 backdrop-blur-xs flex items-center justify-center p-4 hidden">
+    <div class="bg-white rounded-2xl shadow-2xl max-w-xl w-full max-h-[90vh] flex flex-col overflow-hidden animate-in fade-in zoom-in duration-150">
+      <div class="px-6 py-4 border-b border-slate-200 flex items-center justify-between bg-gradient-to-r from-purple-50 to-indigo-50">
+        <div class="flex items-center gap-2">
+          <div class="p-1.5 bg-purple-100 text-purple-700 rounded-lg">
+            <i data-lucide="sparkles" class="w-4 h-4"></i>
+          </div>
+          <div>
+            <h3 class="font-bold text-slate-900 text-sm">AI Content Assistant</h3>
+            <p class="text-[11px] text-slate-500">Draft high-converting hooks and captions in seconds</p>
+          </div>
+        </div>
+        <button onclick="closeAiModal()" class="text-slate-400 hover:text-slate-600 p-1 rounded-lg">
+          <i data-lucide="x" class="w-5 h-5"></i>
+        </button>
+      </div>
+
+      <div class="p-6 space-y-4 overflow-y-auto flex-1 text-xs">
+        <div>
+          <label class="block font-semibold text-slate-700 mb-1">Core Topic or Raw Idea</label>
+          <input type="text" id="aiTopicInput" placeholder="e.g. How we decreased customer churn by 35% with 1 simple email flow" 
+                 class="w-full px-3 py-2 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500 font-medium">
+        </div>
+
+        <div class="grid grid-cols-2 gap-3">
+          <div>
+            <label class="block font-semibold text-slate-700 mb-1">Target Platform</label>
+            <select id="aiPlatformSelect" class="w-full px-3 py-2 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500">
+              <option value="LinkedIn">LinkedIn</option>
+              <option value="X (Twitter)">X (Twitter)</option>
+              <option value="Instagram">Instagram</option>
+              <option value="YouTube">YouTube</option>
+              <option value="Newsletter">Newsletter</option>
+            </select>
+          </div>
+          <div>
+            <label class="block font-semibold text-slate-700 mb-1">Copywriting Style / Formula</label>
+            <select id="aiStyleSelect" class="w-full px-3 py-2 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500">
+              <option value="PAS">Problem - Agitate - Solve (PAS)</option>
+              <option value="Contrarian">Contrarian / Thought Leadership</option>
+              <option value="HowTo">Step-by-Step Educational Guide</option>
+              <option value="Story">Customer Transformation Story</option>
+              <option value="Punchy">Punchy / High-Retention Hook</option>
+            </select>
+          </div>
+        </div>
+
+        <button onclick="generateAiDraft()" class="w-full py-2 bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-700 hover:to-indigo-700 text-white font-semibold rounded-lg shadow-sm transition flex items-center justify-center gap-1.5">
+          <i data-lucide="zap" class="w-4 h-4"></i>
+          <span>Generate Copy Draft</span>
+        </button>
+
+        <!-- Result Box -->
+        <div id="aiResultContainer" class="hidden space-y-3 pt-3 border-t border-slate-100">
+          <div>
+            <label class="block font-semibold text-slate-700 mb-1">Generated Hook / Title</label>
+            <input type="text" id="aiResultTitle" class="w-full px-3 py-1.5 border border-slate-200 rounded-lg bg-slate-50 font-bold text-slate-900">
+          </div>
+          <div>
+            <label class="block font-semibold text-slate-700 mb-1">Generated Caption & Body</label>
+            <textarea id="aiResultBody" rows="5" class="w-full px-3 py-2 border border-slate-200 rounded-lg bg-slate-50 leading-relaxed"></textarea>
+          </div>
+          <div class="grid grid-cols-2 gap-3">
+            <div>
+              <label class="block font-semibold text-slate-700 mb-1">Suggested CTA</label>
+              <input type="text" id="aiResultCta" class="w-full px-3 py-1.5 border border-slate-200 rounded-lg bg-slate-50">
+            </div>
+            <div>
+              <label class="block font-semibold text-slate-700 mb-1">Suggested Hashtags</label>
+              <input type="text" id="aiResultTags" class="w-full px-3 py-1.5 border border-slate-200 rounded-lg bg-slate-50">
+            </div>
+          </div>
+
+          <button onclick="applyAiDraftToPost()" class="w-full py-2 bg-emerald-600 hover:bg-emerald-700 text-white font-semibold rounded-lg shadow-sm transition flex items-center justify-center gap-1.5">
+            <i data-lucide="check" class="w-4 h-4"></i>
+            <span>Use this Draft in Post Editor</span>
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- COMPANY SETTINGS & TEAM MODAL -->
+  <div id="settingsModal" class="fixed inset-0 z-50 bg-slate-900/50 backdrop-blur-xs flex items-center justify-center p-4 hidden">
+    <div class="bg-white rounded-2xl shadow-2xl max-w-lg w-full flex flex-col overflow-hidden animate-in fade-in zoom-in duration-150">
+      <div class="px-6 py-4 border-b border-slate-200 flex items-center justify-between bg-slate-50">
+        <div class="flex items-center gap-2">
+          <div class="p-1.5 bg-indigo-100 text-indigo-700 rounded-lg">
+            <i data-lucide="building" class="w-4 h-4"></i>
+          </div>
+          <div>
+            <h3 class="font-bold text-slate-900 text-sm">Company & Team Settings</h3>
+            <p class="text-[11px] text-slate-500">Customize branding, niche, and team members</p>
+          </div>
+        </div>
+        <button onclick="closeSettingsModal()" class="text-slate-400 hover:text-slate-600 p-1 rounded-lg">
+          <i data-lucide="x" class="w-5 h-5"></i>
+        </button>
+      </div>
+
+      <form id="settingsForm" onsubmit="handleSaveSettings(event)" class="p-6 space-y-4 text-xs">
+        <div>
+          <label class="block font-semibold text-slate-700 mb-1">Company / Brand Name</label>
+          <input type="text" id="settingCompanyName" required class="w-full px-3 py-2 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 font-semibold">
+        </div>
+
+        <div class="grid grid-cols-2 gap-3">
+          <div>
+            <label class="block font-semibold text-slate-700 mb-1">Industry / Niche Badge</label>
+            <input type="text" id="settingNiche" placeholder="e.g. B2B SaaS, Agency, D2C" class="w-full px-3 py-2 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500">
+          </div>
+          <div>
+            <label class="block font-semibold text-slate-700 mb-1">Tagline / Mission</label>
+            <input type="text" id="settingTagline" placeholder="e.g. Master Publishing Command Center" class="w-full px-3 py-2 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500">
+          </div>
+        </div>
+
+        <div>
+          <label class="block font-semibold text-slate-700 mb-1">Team Members / Content Authors (Comma-separated)</label>
+          <input type="text" id="settingTeamMembers" placeholder="Sarah Miller, Alex Rivera, Marcus Vance, Jordan Lee" class="w-full px-3 py-2 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500">
+          <p class="text-[10px] text-slate-400 mt-1">These will appear in the Assignee dropdown for all posts.</p>
+        </div>
+
+        <div class="pt-3 border-t border-slate-200 flex items-center justify-between">
+          <div class="flex items-center gap-3">
+            <button type="button" onclick="clearAllPosts()" class="text-xs text-rose-600 hover:text-rose-800 font-semibold hover:underline">Clear All Posts</button>
+            <button type="button" onclick="resetToDefaults()" class="text-xs text-slate-500 hover:underline">Reset Settings</button>
+          </div>
+          <div class="flex items-center gap-2">
+            <button type="button" onclick="closeSettingsModal()" class="px-4 py-2 border border-slate-200 text-slate-700 font-semibold rounded-lg hover:bg-slate-100 transition">Cancel</button>
+            <button type="submit" class="px-5 py-2 bg-indigo-600 hover:bg-indigo-700 text-white font-semibold rounded-lg shadow-sm transition">Save Settings</button>
+          </div>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- APPLICATION LOGIC / JAVASCRIPT -->
+  <script>
+    // Clean Initial State (No embedded demo posts)
+    const DEFAULT_SETTINGS = {
+      companyName: "My Company ContentOps",
+      niche: "Growth Marketing",
+      tagline: "Master Company Content Calendar & Publishing Command Center",
+      teamMembers: ["Me (Owner)", "Writer / Designer", "Reviewer / Lead"]
+    };
+
+    const DEFAULT_POSTS = [];
+
+    // State
+    let posts = [];
+    let settings = { ...DEFAULT_SETTINGS };
+    let currentView = 'calendar';
+    let currentMonthDate = new Date();
+    currentMonthDate.setDate(1); // Start on current month
+
+    // Initialization
+    function initData() {
+      // Load or initialize settings
+      const storedSettings = localStorage.getItem('company_content_settings_v1');
+      if (storedSettings) {
+        try { settings = JSON.parse(storedSettings); } catch(e) {}
+      }
+      applySettingsToUI();
+
+      // Check if user has already migrated to clean slate
+      const isCleanSlate = localStorage.getItem('company_content_cleaned_slate_v1');
+      if (!isCleanSlate) {
+        // Wipe old demo data on first load
+        posts = [];
+        localStorage.setItem('company_content_posts_v1', JSON.stringify([]));
+        localStorage.setItem('company_content_cleaned_slate_v1', 'true');
+      } else {
+        const storedPosts = localStorage.getItem('company_content_posts_v1');
+        if (storedPosts) {
+          try { posts = JSON.parse(storedPosts); } catch(e) { posts = []; }
+        } else {
+          posts = [];
+        }
+      }
+      saveData();
+    }
+
+    function applySettingsToUI() {
+      document.getElementById('headerCompanyName').innerText = settings.companyName || "ContentOps";
+      document.getElementById('headerNicheBadge').innerText = settings.niche || "Company";
+      document.getElementById('headerTagline').innerText = settings.tagline || "Master Company Content Calendar";
+
+      // Populate Assignee select
+      const assigneeSelect = document.getElementById('postAssignee');
+      if (assigneeSelect) {
+        assigneeSelect.innerHTML = '';
+        (settings.teamMembers || []).forEach(m => {
+          const opt = document.createElement('option');
+          opt.value = m;
+          opt.innerText = m;
+          assigneeSelect.appendChild(opt);
+        });
+      }
+    }
+
+    function saveData() {
+      localStorage.setItem('company_content_posts_v1', JSON.stringify(posts));
+      updateKpis();
+    }
+
+    // View Switching
+    function switchView(viewName) {
+      currentView = viewName;
+      ['calendar', 'kanban', 'table', 'strategy'].forEach(v => {
+        const el = document.getElementById(v + 'ViewContainer');
+        const btn = document.getElementById('btnView' + capitalize(v));
+        if (v === viewName) {
+          el.classList.remove('hidden');
+          btn.classList.add('bg-white', 'text-indigo-700', 'shadow-xs');
+          btn.classList.remove('text-slate-600');
+        } else {
+          el.classList.add('hidden');
+          btn.classList.remove('bg-white', 'text-indigo-700', 'shadow-xs');
+          btn.classList.add('text-slate-600');
+        }
+      });
+      renderCurrentView();
+    }
+
+    function renderCurrentView() {
+      const filtered = getFilteredPosts();
+      updateKpis();
+
+      if (currentView === 'calendar') {
+        renderCalendar(filtered);
+      } else if (currentView === 'kanban') {
+        renderKanban(filtered);
+      } else if (currentView === 'table') {
+        renderTable(filtered);
+      } else if (currentView === 'strategy') {
+        renderStrategy();
+      }
+
+      lucide.createIcons();
+    }
+
+    // Filters & Search
+    function getFilteredPosts() {
+      const platform = document.getElementById('filterPlatform').value;
+      const pillar = document.getElementById('filterPillar').value;
+      const status = document.getElementById('filterStatus').value;
+      const query = document.getElementById('globalSearch').value.toLowerCase().trim();
+
+      return posts.filter(p => {
+        if (platform !== 'ALL' && p.platform !== platform) return false;
+        if (pillar !== 'ALL' && p.pillar !== pillar) return false;
+        if (status !== 'ALL' && p.status !== status) return false;
+        if (query) {
+          const matchTitle = (p.title || '').toLowerCase().includes(query);
+          const matchCopy = (p.copy || '').toLowerCase().includes(query);
+          const matchAssignee = (p.assignee || '').toLowerCase().includes(query);
+          const matchTags = (p.hashtags || '').toLowerCase().includes(query);
+          if (!matchTitle && !matchCopy && !matchAssignee && !matchTags) return false;
+        }
+        return true;
+      });
+    }
+
+    function resetFilters() {
+      document.getElementById('filterPlatform').value = 'ALL';
+      document.getElementById('filterPillar').value = 'ALL';
+      document.getElementById('filterStatus').value = 'ALL';
+      document.getElementById('globalSearch').value = '';
+      renderCurrentView();
+    }
+
+    document.getElementById('globalSearch').addEventListener('input', () => {
+      renderCurrentView();
+    });
+
+    // KPI Summary Calculations
+    function updateKpis() {
+      document.getElementById('statTotal').innerText = posts.length;
+      document.getElementById('statScheduled').innerText = posts.filter(p => p.status === 'Scheduled').length;
+      document.getElementById('statInProgress').innerText = posts.filter(p => p.status === 'Drafting' || p.status === 'In Review').length;
+      document.getElementById('statPublished').innerText = posts.filter(p => p.status === 'Published').length;
+
+      const totalImpressions = posts.reduce((sum, p) => sum + (Number(p.impressions) || 0), 0);
+      document.getElementById('statImpressions').innerText = totalImpressions > 1000 ? (totalImpressions / 1000).toFixed(1) + 'k' : totalImpressions;
+
+      const pillars = new Set(posts.map(p => p.pillar));
+      document.getElementById('statPillars').innerText = `${Math.min(pillars.size, 4)} / 4`;
+    }
+
+    // Styling Helpers
+    function getPlatformStyle(platform) {
+      switch(platform) {
+        case 'LinkedIn': return { bg: 'bg-blue-600', text: 'text-white', light: 'bg-blue-50 text-blue-700 border-blue-200' };
+        case 'X (Twitter)': return { bg: 'bg-slate-900', text: 'text-white', light: 'bg-slate-100 text-slate-800 border-slate-300' };
+        case 'Instagram': return { bg: 'bg-pink-600', text: 'text-white', light: 'bg-pink-50 text-pink-700 border-pink-200' };
+        case 'YouTube': return { bg: 'bg-red-600', text: 'text-white', light: 'bg-red-50 text-red-700 border-red-200' };
+        case 'Newsletter': return { bg: 'bg-emerald-600', text: 'text-white', light: 'bg-emerald-50 text-emerald-700 border-emerald-200' };
+        case 'Blog': return { bg: 'bg-indigo-600', text: 'text-white', light: 'bg-indigo-50 text-indigo-700 border-indigo-200' };
+        case 'TikTok': return { bg: 'bg-slate-900', text: 'text-white', light: 'bg-fuchsia-50 text-fuchsia-700 border-fuchsia-200' };
+        default: return { bg: 'bg-slate-600', text: 'text-white', light: 'bg-slate-50 text-slate-700 border-slate-200' };
+      }
+    }
+
+    function getStatusBadge(status) {
+      switch(status) {
+        case 'Idea': return `<span class="px-2 py-0.5 rounded text-[10px] font-semibold bg-purple-100 text-purple-700">💡 Idea</span>`;
+        case 'Drafting': return `<span class="px-2 py-0.5 rounded text-[10px] font-semibold bg-blue-100 text-blue-700">✍️ Drafting</span>`;
+        case 'In Review': return `<span class="px-2 py-0.5 rounded text-[10px] font-semibold bg-amber-100 text-amber-800">🔍 In Review</span>`;
+        case 'Scheduled': return `<span class="px-2 py-0.5 rounded text-[10px] font-semibold bg-teal-100 text-teal-800">⏰ Scheduled</span>`;
+        case 'Published': return `<span class="px-2 py-0.5 rounded text-[10px] font-semibold bg-emerald-100 text-emerald-800">🚀 Published</span>`;
+        default: return `<span class="px-2 py-0.5 rounded text-[10px] font-semibold bg-slate-100 text-slate-700">${status}</span>`;
+      }
+    }
+
+    // 1. CALENDAR RENDER
+    function renderCalendar(filteredPosts) {
+      const year = currentMonthDate.getFullYear();
+      const month = currentMonthDate.getMonth();
+      
+      const monthNames = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"];
+      document.getElementById('calendarMonthYear').innerText = `${monthNames[month]} ${year}`;
+
+      const firstDay = new Date(year, month, 1).getDay();
+      const daysInMonth = new Date(year, month + 1, 0).getDate();
+      const prevMonthDays = new Date(year, month, 0).getDate();
+
+      const grid = document.getElementById('calendarGrid');
+      grid.innerHTML = '';
+
+      // Leading days from previous month
+      for (let i = firstDay - 1; i >= 0; i--) {
+        const dayNum = prevMonthDays - i;
+        const cell = document.createElement('div');
+        cell.className = 'bg-slate-50/50 p-2 min-h-[110px] text-slate-300 text-xs font-semibold';
+        cell.innerText = dayNum;
+        grid.appendChild(cell);
+      }
+
+      // Current month days
+      const todayStr = new Date().toISOString().split('T')[0];
+
+      for (let d = 1; d <= daysInMonth; d++) {
+        const dateStr = `${year}-${String(month + 1).padStart(2, '0')}-${String(d).padStart(2, '0')}`;
+        const dayPosts = filteredPosts.filter(p => p.date === dateStr);
+        const isToday = dateStr === todayStr;
+
+        const cell = document.createElement('div');
+        cell.className = `bg-white p-2 min-h-[120px] transition hover:bg-indigo-50/20 flex flex-col justify-between group ${isToday ? 'ring-2 ring-indigo-500 ring-inset' : ''}`;
+        
+        let headerHtml = `
+          <div class="flex items-center justify-between mb-1.5">
+            <span class="text-xs font-bold ${isToday ? 'bg-indigo-600 text-white w-6 h-6 rounded-full flex items-center justify-center' : 'text-slate-700'}">${d}</span>
+            <button onclick="openPostModalWithDate('${dateStr}')" class="opacity-0 group-hover:opacity-100 p-0.5 text-slate-400 hover:text-indigo-600 transition" title="Add post on this date">
+              <i data-lucide="plus" class="w-3.5 h-3.5"></i>
+            </button>
+          </div>
+        `;
+
+        let postsHtml = '<div class="space-y-1 overflow-y-auto max-h-[85px]">';
+        dayPosts.forEach(post => {
+          const style = getPlatformStyle(post.platform);
+          postsHtml += `
+            <div onclick="openPostModal('${post.id}')" class="cursor-pointer p-1.5 rounded-lg border text-[11px] leading-tight font-medium hover:shadow-xs transition ${style.light}">
+              <div class="flex items-center justify-between gap-1 mb-0.5">
+                <span class="font-bold truncate">${post.platform}</span>
+                <span class="text-[9px] opacity-75">${post.time || ''}</span>
+              </div>
+              <p class="font-semibold text-slate-900 truncate">${post.title}</p>
+            </div>
+          `;
+        });
+        postsHtml += '</div>';
+
+        cell.innerHTML = headerHtml + postsHtml;
+        grid.appendChild(cell);
+      }
+
+      // Trailing days
+      const totalCells = firstDay + daysInMonth;
+      const trailingCells = (7 - (totalCells % 7)) % 7;
+      for (let i = 1; i <= trailingCells; i++) {
+        const cell = document.createElement('div');
+        cell.className = 'bg-slate-50/50 p-2 min-h-[110px] text-slate-300 text-xs font-semibold';
+        cell.innerText = i;
+        grid.appendChild(cell);
+      }
+    }
+
+    function changeMonth(delta) {
+      currentMonthDate.setMonth(currentMonthDate.getMonth() + delta);
+      renderCurrentView();
+    }
+
+    function goToCurrentMonth() {
+      const now = new Date();
+      currentMonthDate = new Date(now.getFullYear(), now.getMonth(), 1);
+      renderCurrentView();
+    }
+
+    // 2. KANBAN RENDER with One-Click Stage Progression
+    function renderKanban(filteredPosts) {
+      const stages = [
+        { name: 'Idea', label: '1. Brainstorm / Ideas', next: 'Drafting', prev: null },
+        { name: 'Drafting', label: '2. Drafting', next: 'In Review', prev: 'Idea' },
+        { name: 'In Review', label: '3. In Review', next: 'Scheduled', prev: 'Drafting' },
+        { name: 'Scheduled', label: '4. Ready / Scheduled', next: 'Published', prev: 'In Review' },
+        { name: 'Published', label: '5. Published', next: null, prev: 'Scheduled' }
+      ];
+
+      stages.forEach(stage => {
+        const colContainer = document.getElementById(`kanban-${stage.name}`);
+        const countBadge = document.getElementById(`badgeCount-${stage.name.replace(' ', '-')}`);
+        const statusPosts = filteredPosts.filter(p => p.status === stage.name);
+
+        if (countBadge) countBadge.innerText = statusPosts.length;
+        if (!colContainer) return;
+
+        colContainer.innerHTML = '';
+        if (statusPosts.length === 0) {
+          colContainer.innerHTML = `
+            <div class="h-28 border-2 border-dashed border-slate-200 rounded-xl flex items-center justify-center text-slate-400 text-xs">
+              No posts in this stage
+            </div>
+          `;
+          return;
+        }
+
+        statusPosts.forEach(post => {
+          const style = getPlatformStyle(post.platform);
+          const card = document.createElement('div');
+          card.setAttribute('draggable', 'true');
+          card.setAttribute('data-post-id', post.id);
+          card.ondragstart = (e) => handleDragStart(e, post.id);
+          card.ondragend = (e) => handleDragEnd(e);
+          card.className = "bg-white p-3 rounded-xl border border-slate-200 shadow-2xs hover:shadow-md transition space-y-2 group cursor-grab active:cursor-grabbing hover:border-indigo-300 select-none";
+
+          let stageButtons = '<div class="flex items-center gap-1 pt-1.5 border-t border-slate-100 justify-between text-[10px]">';
+          if (stage.prev) {
+            stageButtons += `<button onclick="movePostStage('${post.id}', '${stage.prev}', event)" class="px-1.5 py-0.5 rounded text-slate-500 hover:text-indigo-600 hover:bg-slate-100">← ${stage.prev}</button>`;
+          } else {
+            stageButtons += `<span></span>`;
+          }
+          if (stage.next) {
+            stageButtons += `<button onclick="movePostStage('${post.id}', '${stage.next}', event)" class="px-2 py-0.5 rounded bg-indigo-50 text-indigo-700 font-semibold hover:bg-indigo-100">${stage.next} →</button>`;
+          }
+          stageButtons += '</div>';
+
+          card.innerHTML = `
+            <div class="flex items-center justify-between cursor-pointer" onclick="openPostModal('${post.id}')">
+              <div class="flex items-center gap-1">
+                <i data-lucide="grip-vertical" class="w-3 h-3 text-slate-300 group-hover:text-slate-500"></i>
+                <span class="px-2 py-0.5 rounded text-[10px] font-bold ${style.light}">${post.platform}</span>
+              </div>
+              <span class="text-[10px] font-semibold text-slate-400">${post.date || 'No date'}</span>
+            </div>
+            <h4 class="font-bold text-slate-900 text-xs leading-snug group-hover:text-indigo-600 transition cursor-pointer" onclick="openPostModal('${post.id}')">${post.title}</h4>
+            <p class="text-[11px] text-slate-500 line-clamp-2 cursor-pointer" onclick="openPostModal('${post.id}')">${post.copy || 'No draft copy yet...'}</p>
+            
+            <div class="flex items-center justify-between text-[10px] text-slate-500 pt-1">
+              <span class="flex items-center gap-1"><i data-lucide="tag" class="w-3 h-3 text-slate-400"></i> ${post.pillar}</span>
+              <span class="font-medium text-slate-700">${post.assignee || 'Unassigned'}</span>
+            </div>
+            ${stageButtons}
+          `;
+          colContainer.appendChild(card);
+        });
+      });
+    }
+
+    // DRAG AND DROP HANDLERS FOR KANBAN
+    let draggedPostId = null;
+
+    function handleDragStart(event, postId) {
+      draggedPostId = postId;
+      event.dataTransfer.setData('text/plain', postId);
+      event.dataTransfer.effectAllowed = 'move';
+      
+      // Visual feedback on card
+      setTimeout(() => {
+        if (event.target) event.target.classList.add('opacity-40', 'scale-95');
+      }, 0);
+    }
+
+    function handleDragEnd(event) {
+      if (event.target) event.target.classList.remove('opacity-40', 'scale-95');
+      draggedPostId = null;
+      clearAllColumnHighlights();
+    }
+
+    function handleDragOver(event) {
+      event.preventDefault();
+      event.dataTransfer.dropEffect = 'move';
+    }
+
+    function handleDragEnter(event, stageName) {
+      event.preventDefault();
+      const colId = `kanban-wrapper-${stageName.replace(' ', '-')}`;
+      const col = document.getElementById(colId);
+      if (col) {
+        col.classList.add('ring-2', 'ring-indigo-500', 'bg-indigo-50/50');
+      }
+    }
+
+    function handleDragLeave(event, stageName) {
+      const colId = `kanban-wrapper-${stageName.replace(' ', '-')}`;
+      const col = document.getElementById(colId);
+      // only remove if left the column bounds
+      if (col && event.relatedTarget && !col.contains(event.relatedTarget)) {
+        col.classList.remove('ring-2', 'ring-indigo-500', 'bg-indigo-50/50');
+      }
+    }
+
+    function handleDrop(event, targetStage) {
+      event.preventDefault();
+      clearAllColumnHighlights();
+
+      const postId = event.dataTransfer.getData('text/plain') || draggedPostId;
+      if (!postId) return;
+
+      const post = posts.find(p => p.id === postId);
+      if (post && post.status !== targetStage) {
+        post.status = targetStage;
+        saveData();
+        renderCurrentView();
+      }
+    }
+
+    function clearAllColumnHighlights() {
+      ['Idea', 'Drafting', 'In-Review', 'Scheduled', 'Published'].forEach(s => {
+        const col = document.getElementById(`kanban-wrapper-${s}`);
+        if (col) col.classList.remove('ring-2', 'ring-indigo-500', 'bg-indigo-50/50');
+      });
+    }
+
+    function movePostStage(postId, newStage, event) {
+      if (event) event.stopPropagation();
+      const p = posts.find(item => item.id === postId);
+      if (p) {
+        p.status = newStage;
+        saveData();
+        renderCurrentView();
+      }
+    }
+
+    // 3. TABLE RENDER
+    function renderTable(filteredPosts) {
+      const tbody = document.getElementById('tableBody');
+      tbody.innerHTML = '';
+
+      if (filteredPosts.length === 0) {
+        tbody.innerHTML = `<tr><td colspan="7" class="py-8 text-center text-slate-400">No matching content posts found.</td></tr>`;
+        return;
+      }
+
+      filteredPosts.forEach(post => {
+        const style = getPlatformStyle(post.platform);
+        const tr = document.createElement('tr');
+        tr.className = "hover:bg-slate-50/80 transition group";
+
+        tr.innerHTML = `
+          <td class="py-3 px-4 font-semibold text-slate-900">
+            <div class="flex flex-col">
+              <span class="font-bold hover:text-indigo-600 cursor-pointer" onclick="openPostModal('${post.id}')">${post.title}</span>
+              <span class="text-[11px] text-slate-400 line-clamp-1">${post.copy || 'No caption'}</span>
+            </div>
+          </td>
+          <td class="py-3 px-3">
+            <span class="px-2 py-0.5 rounded text-[10px] font-bold ${style.light}">${post.platform}</span>
+          </td>
+          <td class="py-3 px-3 text-slate-600 font-medium">${post.pillar}</td>
+          <td class="py-3 px-3 text-slate-700 font-semibold whitespace-nowrap">
+            ${post.date} <span class="text-slate-400 text-[10px]">${post.time || ''}</span>
+          </td>
+          <td class="py-3 px-3">${getStatusBadge(post.status)}</td>
+          <td class="py-3 px-3 text-slate-600 font-medium">${post.assignee || '—'}</td>
+          <td class="py-3 px-3 text-right whitespace-nowrap">
+            <button onclick="openPostModal('${post.id}')" class="text-slate-400 hover:text-indigo-600 p-1 rounded" title="Edit">
+              <i data-lucide="edit-2" class="w-4 h-4"></i>
+            </button>
+            <button onclick="quickDeletePost('${post.id}')" class="text-slate-400 hover:text-rose-600 p-1 rounded" title="Delete">
+              <i data-lucide="trash-2" class="w-4 h-4"></i>
+            </button>
+          </td>
+        `;
+        tbody.appendChild(tr);
+      });
+    }
+
+    // 4. STRATEGY RENDER
+    function renderStrategy() {
+      const total = posts.length || 1;
+      const countEdu = posts.filter(p => p.pillar === 'Educational').length;
+      const countLead = posts.filter(p => p.pillar === 'Thought Leadership').length;
+      const countProof = posts.filter(p => p.pillar === 'Social Proof').length;
+      const countProd = posts.filter(p => p.pillar === 'Product Updates' || p.pillar === 'Company Culture').length;
+
+      const pctEdu = Math.round((countEdu / total) * 100);
+      const pctLead = Math.round((countLead / total) * 100);
+      const pctProof = Math.round((countProof / total) * 100);
+      const pctProd = Math.round((countProd / total) * 100);
+
+      document.getElementById('pillarPctEducational').innerText = `${pctEdu}% (${countEdu} posts)`;
+      document.getElementById('pillarBarEducational').style.width = `${pctEdu}%`;
+
+      document.getElementById('pillarPctLeadership').innerText = `${pctLead}% (${countLead} posts)`;
+      document.getElementById('pillarBarLeadership').style.width = `${pctLead}%`;
+
+      document.getElementById('pillarPctProof').innerText = `${pctProof}% (${countProof} posts)`;
+      document.getElementById('pillarBarProof').style.width = `${pctProof}%`;
+
+      document.getElementById('pillarPctProduct').innerText = `${pctProd}% (${countProd} posts)`;
+      document.getElementById('pillarBarProduct').style.width = `${pctProd}%`;
+    }
+
+    // MODAL & POST ACTIONS
+    function openPostModal(postId = null) {
+      const modal = document.getElementById('postModal');
+      const form = document.getElementById('postForm');
+      form.reset();
+
+      applySettingsToUI();
+
+      const btnDelete = document.getElementById('btnDeletePost');
+      const modalTitle = document.getElementById('modalTitle');
+
+      if (postId) {
+        const post = posts.find(p => p.id === postId);
+        if (post) {
+          document.getElementById('postId').value = post.id;
+          document.getElementById('postTitle').value = post.title || '';
+          document.getElementById('postPlatform').value = post.platform || 'LinkedIn';
+          document.getElementById('postPillar').value = post.pillar || 'Educational';
+          document.getElementById('postStatus').value = post.status || 'Idea';
+          document.getElementById('postDate').value = post.date || '';
+          document.getElementById('postTime').value = post.time || '09:00';
+          document.getElementById('postAssignee').value = post.assignee || settings.teamMembers[0] || '';
+          document.getElementById('postCopy').value = post.copy || '';
+          document.getElementById('postAsset').value = post.asset || 'PDF Document / Carousel';
+          document.getElementById('postCta').value = post.cta || '';
+          document.getElementById('postHashtags').value = post.hashtags || '';
+          document.getElementById('postUrl').value = post.url || '';
+          document.getElementById('postImpressions').value = post.impressions || 0;
+          document.getElementById('postEngagements').value = post.engagements || 0;
+
+          modalTitle.innerText = "Edit Content Post";
+          btnDelete.classList.remove('hidden');
+        }
+      } else {
+        document.getElementById('postId').value = '';
+        document.getElementById('postDate').value = new Date().toISOString().split('T')[0];
+        document.getElementById('postAssignee').value = settings.teamMembers[0] || 'Unassigned';
+        modalTitle.innerText = "Create New Content Post";
+        btnDelete.classList.add('hidden');
+      }
+
+      updateCharCountLimit();
+      modal.classList.remove('hidden');
+      lucide.createIcons();
+    }
+
+    function openPostModalWithDate(dateStr) {
+      openPostModal();
+      document.getElementById('postDate').value = dateStr;
+    }
+
+    function closePostModal() {
+      document.getElementById('postModal').classList.add('hidden');
+    }
+
+    function updateCharCountLimit() {
+      const platform = document.getElementById('postPlatform').value;
+      const text = document.getElementById('postCopy').value || '';
+      const charCount = text.length;
+
+      let limit = 3000;
+      if (platform === 'X (Twitter)') limit = 280;
+      else if (platform === 'Instagram') limit = 2200;
+      else if (platform === 'TikTok') limit = 2200;
+      else if (platform === 'LinkedIn') limit = 3000;
+
+      const counterEl = document.getElementById('charCountDisplay');
+      const warningEl = document.getElementById('charLimitWarning');
+
+      counterEl.innerText = `${charCount} / ${limit} chars`;
+      if (charCount > limit) {
+        counterEl.classList.add('text-rose-600', 'font-bold');
+        warningEl.classList.remove('hidden');
+      } else {
+        counterEl.classList.remove('text-rose-600', 'font-bold');
+        warningEl.classList.add('hidden');
+      }
+    }
+
+    function handleSavePost(event) {
+      event.preventDefault();
+      const id = document.getElementById('postId').value;
+      
+      const newPost = {
+        id: id || 'POST-' + Math.floor(100 + Math.random() * 900),
+        title: document.getElementById('postTitle').value.trim(),
+        platform: document.getElementById('postPlatform').value,
+        pillar: document.getElementById('postPillar').value,
+        status: document.getElementById('postStatus').value,
+        date: document.getElementById('postDate').value,
+        time: document.getElementById('postTime').value || '09:00',
+        assignee: document.getElementById('postAssignee').value.trim(),
+        copy: document.getElementById('postCopy').value.trim(),
+        asset: document.getElementById('postAsset').value,
+        cta: document.getElementById('postCta').value.trim(),
+        hashtags: document.getElementById('postHashtags').value.trim(),
+        url: document.getElementById('postUrl').value.trim(),
+        impressions: Number(document.getElementById('postImpressions').value) || 0,
+        engagements: Number(document.getElementById('postEngagements').value) || 0
+      };
+
+      if (id) {
+        const index = posts.findIndex(p => p.id === id);
+        if (index !== -1) posts[index] = newPost;
+      } else {
+        posts.unshift(newPost);
+      }
+
+      saveData();
+      closePostModal();
+      renderCurrentView();
+    }
+
+    function handleDeletePost() {
+      const id = document.getElementById('postId').value;
+      if (!id) return;
+      if (confirm("Are you sure you want to delete this post?")) {
+        posts = posts.filter(p => p.id !== id);
+        saveData();
+        closePostModal();
+        renderCurrentView();
+      }
+    }
+
+    function quickDeletePost(id) {
+      if (confirm("Delete this content post?")) {
+        posts = posts.filter(p => p.id !== id);
+        saveData();
+        renderCurrentView();
+      }
+    }
+
+    // AI COPYWRITER ENGINE
+    function openAiAssistantModal() {
+      const currentTitle = document.getElementById('postTitle').value;
+      const currentPlatform = document.getElementById('postPlatform').value;
+      if (currentTitle) document.getElementById('aiTopicInput').value = currentTitle;
+      if (currentPlatform) document.getElementById('aiPlatformSelect').value = currentPlatform;
+
+      document.getElementById('aiResultContainer').classList.add('hidden');
+      document.getElementById('aiModal').classList.remove('hidden');
+      lucide.createIcons();
+    }
+
+    function closeAiModal() {
+      document.getElementById('aiModal').classList.add('hidden');
+    }
+
+    function generateAiDraft() {
+      const topic = document.getElementById('aiTopicInput').value.trim() || "How we solved our biggest growth bottleneck";
+      const platform = document.getElementById('aiPlatformSelect').value;
+      const style = document.getElementById('aiStyleSelect').value;
+
+      let title = "";
+      let body = "";
+      let cta = "";
+      let tags = "";
+
+      if (style === "PAS") {
+        title = `The #1 reason ${settings.niche || 'teams'} struggle with ${topic.toLowerCase()}`;
+        body = `Most companies treat ${topic.toLowerCase()} like a minor operational detail.\n\nHere is what really happens:\n• You waste 15+ hours a week fighting disconnected tools.\n• Team alignment suffers and deadlines slip.\n• Morale dips while overhead multiplies.\n\nHere is how we solved this in 3 strategic steps:\n1. Standardize the single source of truth.\n2. Remove approval bottlenecks with clear ownership.\n3. Measure weekly output instead of daily inputs.`;
+        cta = "Repost to help another team leader cut the friction ♻️";
+        tags = `#Leadership #${(settings.niche || 'Business').replace(/\s+/g,'')} #Productivity`;
+      } else if (style === "Contrarian") {
+        title = `Unpopular opinion: Stop doing ${topic.toLowerCase()} the conventional way`;
+        body = `90% of advice around ${topic.toLowerCase()} is outdated.\n\nEveryone tells you to do more, hire faster, and push harder.\n\nIn reality? The highest leverage move is subtraction.\n\nWhen we audited our workflows last quarter, cutting 2 bloated processes did more for our revenue than adding 5 new tools.\n\nCurious what the other side looks like?`;
+        cta = "What is one conventional practice in your industry you completely disagree with?";
+        tags = `#ThoughtLeadership #IndustryInsights #${(settings.niche || 'Strategy').replace(/\s+/g,'')}`;
+      } else if (style === "HowTo") {
+        title = `Step-by-Step Playbook: ${topic}`;
+        body = `How to master ${topic.toLowerCase()} in 4 steps (save this for your next sprint):\n\nStep 1: Define the North Star metric.\nStep 2: Map out the minimum viable asset before building.\nStep 3: Ship early, gather immediate qualitative feedback.\nStep 4: Automate the recurring distribution loop.\n\nBookmark this post so your team doesn't reinvent the wheel next week.`;
+        cta = "Bookmark / Save this post for your next planning session 📌";
+        tags = `#HowTo #Framework #Operations #BestPractices`;
+      } else if (style === "Story") {
+        title = `From stuck to scale: The real story behind ${topic.toLowerCase()}`;
+        body = `3 months ago, we hit an unexpected wall.\n\nEvery metric was flatlining, and our team was exhausted.\n\nInstead of doubling down on what wasn't working, we took a radical pivot:\nWe listened to 25 of our most active users in depth.\n\nWhat did we find? They didn't want more features—they wanted simplicity and speed.\n\nHere is the transformation that followed:`;
+        cta = "Read the full case breakdown in the link below 👇";
+        tags = `#CustomerSuccess #StartupJourney #LessonsLearned`;
+      } else {
+        // Punchy
+        title = `3 high-leverage lessons from ${topic.toLowerCase()}`;
+        body = `Simplicity beats complexity every single time.\n\n1. If it takes more than 2 clicks, nobody will use it.\n2. Documentation is the highest-ROI marketing nobody talks about.\n3. Consistency compounds faster than occasional brilliance.\n\nWhich one resonates most with you today?`;
+        cta = "Drop your favorite takeaway in the comments!";
+        tags = `#GrowthHacks #BusinessTips #TechCulture`;
+      }
+
+      // Format for X if selected (punchier)
+      if (platform === "X (Twitter)") {
+        body = body.split('\n\n').slice(0, 3).join('\n\n');
+        if (body.length > 240) body = body.substring(0, 235) + "...";
+      }
+
+      document.getElementById('aiResultTitle').value = title;
+      document.getElementById('aiResultBody').value = body;
+      document.getElementById('aiResultCta').value = cta;
+      document.getElementById('aiResultTags').value = tags;
+
+      document.getElementById('aiResultContainer').classList.remove('hidden');
+      lucide.createIcons();
+    }
+
+    function applyAiDraftToPost() {
+      document.getElementById('postTitle').value = document.getElementById('aiResultTitle').value;
+      document.getElementById('postCopy').value = document.getElementById('aiResultBody').value;
+      document.getElementById('postCta').value = document.getElementById('aiResultCta').value;
+      document.getElementById('postHashtags').value = document.getElementById('aiResultTags').value;
+      document.getElementById('postPlatform').value = document.getElementById('aiPlatformSelect').value;
+
+      updateCharCountLimit();
+      closeAiModal();
+    }
+
+    // 1-CLICK 30-DAY AUTOPLANNER
+    function triggerAutoPlan30Days() {
+      if (!confirm(`Generate a balanced 4-week publishing plan (10+ posts) for ${settings.companyName}? This will add structured posts across all 4 pillars.`)) {
+        return;
+      }
+
+      const topics = [
+        { title: "5 Lessons we learned scaling operations this quarter", pillar: "Thought Leadership", platform: "LinkedIn", asset: "PDF Document / Carousel" },
+        { title: "The 10-minute cheat sheet for workflow automation", pillar: "Educational", platform: "X (Twitter)", asset: "Single Image / Infographic" },
+        { title: "Customer Spotlight: How we helped streamline team velocity", pillar: "Social Proof", platform: "LinkedIn", asset: "Single Image / Infographic" },
+        { title: "Behind-the-Scenes: Sneak peek at next month's update", pillar: "Product Updates", platform: "Instagram", asset: "Short Video / Reel (30-60s)" },
+        { title: "The 3 biggest mistakes companies make when choosing software", pillar: "Educational", platform: "LinkedIn", asset: "PDF Document / Carousel" },
+        { title: "Why simplicity is our company's ultimate competitive moat", pillar: "Thought Leadership", platform: "Newsletter", asset: "Text Only" },
+        { title: "Case Study: Cutting overhead by 30% in 60 days", pillar: "Social Proof", platform: "YouTube", asset: "Full Video / Walkthrough" },
+        { title: "Step-by-Step: Setting up your first automated workflow", pillar: "Educational", platform: "LinkedIn", asset: "PDF Document / Carousel" },
+        { title: "AMA: What questions do you have for our founding team?", pillar: "Company Culture", platform: "X (Twitter)", asset: "Single Image / Infographic" },
+        { title: "Monthly Digest: Key metrics, new features, and industry trends", pillar: "Product Updates", platform: "Newsletter", asset: "Text Only" }
+      ];
+
+      const baseDate = new Date();
+      topics.forEach((t, idx) => {
+        const postDate = new Date(baseDate);
+        postDate.setDate(baseDate.getDate() + (idx * 2) + 1);
+        const dateStr = postDate.toISOString().split('T')[0];
+
+        posts.push({
+          id: 'POST-' + Math.floor(200 + Math.random() * 800),
+          title: t.title,
+          platform: t.platform,
+          pillar: t.pillar,
+          date: dateStr,
+          time: '09:30',
+          status: idx < 2 ? 'Scheduled' : (idx < 5 ? 'Drafting' : 'Idea'),
+          assignee: settings.teamMembers[idx % settings.teamMembers.length] || 'Unassigned',
+          copy: `Drafting content for ${t.title}...\n\nKey takeaway: Actionable value for ${settings.niche} professionals.`,
+          asset: t.asset,
+          cta: "Save this post & share your thoughts in comments",
+          hashtags: `#${(settings.niche || 'Tech').replace(/\s+/g,'')} #Growth #Leadership`,
+          url: "",
+          impressions: 0,
+          engagements: 0
+        });
+      });
+
+      saveData();
+      renderCurrentView();
+      alert(`🎉 Generated 10 new strategic posts scheduled over the upcoming weeks!`);
+    }
+
+    // SETTINGS MODAL
+    function openSettingsModal() {
+      document.getElementById('settingCompanyName').value = settings.companyName || '';
+      document.getElementById('settingNiche').value = settings.niche || '';
+      document.getElementById('settingTagline').value = settings.tagline || '';
+      document.getElementById('settingTeamMembers').value = (settings.teamMembers || []).join(', ');
+
+      document.getElementById('settingsModal').classList.remove('hidden');
+      lucide.createIcons();
+    }
+
+    function closeSettingsModal() {
+      document.getElementById('settingsModal').classList.add('hidden');
+    }
+
+    function handleSaveSettings(event) {
+      event.preventDefault();
+      settings.companyName = document.getElementById('settingCompanyName').value.trim() || "ContentOps";
+      settings.niche = document.getElementById('settingNiche').value.trim() || "B2B SaaS";
+      settings.tagline = document.getElementById('settingTagline').value.trim() || "Master Company Content Calendar";
+      
+      const rawMembers = document.getElementById('settingTeamMembers').value.split(',').map(s => s.trim()).filter(s => s.length > 0);
+      settings.teamMembers = rawMembers.length > 0 ? rawMembers : ["Sarah Miller", "Alex Rivera", "Marcus Vance", "Jordan Lee"];
+
+      localStorage.setItem('company_content_settings_v1', JSON.stringify(settings));
+      applySettingsToUI();
+      closeSettingsModal();
+      renderCurrentView();
+    }
+
+    function clearAllPosts() {
+      if (confirm("Are you sure you want to clear all posts from the calendar?")) {
+        posts = [];
+        saveData();
+        renderCurrentView();
+        closeSettingsModal();
+      }
+    }
+
+    function resetToDefaults() {
+      if (confirm("Reset to clean state and default settings?")) {
+        localStorage.removeItem('company_content_posts_v1');
+        localStorage.removeItem('company_content_settings_v1');
+        localStorage.removeItem('company_content_cleaned_slate_v1');
+        settings = { ...DEFAULT_SETTINGS };
+        posts = [];
+        saveData();
+        applySettingsToUI();
+        closeSettingsModal();
+        renderCurrentView();
+      }
+    }
+
+    // EXPORT & IMPORT
+    function exportCSV() {
+      const headers = ["ID", "Title", "Platform", "Pillar", "Scheduled Date", "Time", "Status", "Assignee", "Copy / Caption", "Visual Assets", "Hashtags", "CTA", "Live URL", "Impressions", "Engagements"];
+      
+      const rows = posts.map(p => [
+        `"${p.id || ''}"`,
+        `"${(p.title || '').replace(/"/g, '""')}"`,
+        `"${p.platform || ''}"`,
+        `"${p.pillar || ''}"`,
+        `"${p.date || ''}"`,
+        `"${p.time || ''}"`,
+        `"${p.status || ''}"`,
+        `"${(p.assignee || '').replace(/"/g, '""')}"`,
+        `"${(p.copy || '').replace(/"/g, '""')}"`,
+        `"${p.asset || ''}"`,
+        `"${(p.hashtags || '').replace(/"/g, '""')}"`,
+        `"${(p.cta || '').replace(/"/g, '""')}"`,
+        `"${p.url || ''}"`,
+        p.impressions || 0,
+        p.engagements || 0
+      ]);
+
+      const csvContent = "data:text/csv;charset=utf-8," + [headers.join(','), ...rows.map(e => e.join(','))].join('\n');
+      const encodedUri = encodeURI(csvContent);
+      const link = document.createElement("a");
+      link.setAttribute("href", encodedUri);
+      link.setAttribute("download", `content_calendar_${new Date().toISOString().split('T')[0]}.csv`);
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+    }
+
+    function exportJSON() {
+      const backupData = {
+        settings: settings,
+        posts: posts,
+        exportedAt: new Date().toISOString()
+      };
+      const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(backupData, null, 2));
+      const downloadAnchor = document.createElement('a');
+      downloadAnchor.setAttribute("href", dataStr);
+      downloadAnchor.setAttribute("download", `content_calendar_backup_${new Date().toISOString().split('T')[0]}.json`);
+      document.body.appendChild(downloadAnchor);
+      downloadAnchor.click();
+      downloadAnchor.remove();
+    }
+
+    function handleFileImport(event) {
+      const file = event.target.files[0];
+      if (!file) return;
+
+      const reader = new FileReader();
+      reader.onload = function(e) {
+        try {
+          if (file.name.endsWith('.json')) {
+            const imported = JSON.parse(e.target.result);
+            if (imported.posts && Array.isArray(imported.posts)) {
+              posts = imported.posts;
+              if (imported.settings) settings = imported.settings;
+            } else if (Array.isArray(imported)) {
+              posts = imported;
+            }
+            saveData();
+            applySettingsToUI();
+            renderCurrentView();
+            alert(`Successfully imported posts and settings!`);
+          } else if (file.name.endsWith('.csv')) {
+            const lines = e.target.result.split('\n').filter(l => l.trim().length > 0);
+            if (lines.length > 1) {
+              const importedPosts = [];
+              for (let i = 1; i < lines.length; i++) {
+                const cols = lines[i].match(/(".*?"|[^",\s]+)(?=\s*,|\s*$)/g) || [];
+                if (cols.length >= 2) {
+                  importedPosts.push({
+                    id: cols[0] ? cols[0].replace(/"/g, '') : 'POST-' + (100 + i),
+                    title: cols[1] ? cols[1].replace(/"/g, '') : 'Untitled Post',
+                    platform: cols[2] ? cols[2].replace(/"/g, '') : 'LinkedIn',
+                    pillar: cols[3] ? cols[3].replace(/"/g, '') : 'Educational',
+                    date: cols[4] ? cols[4].replace(/"/g, '') : new Date().toISOString().split('T')[0],
+                    time: cols[5] ? cols[5].replace(/"/g, '') : '09:00',
+                    status: cols[6] ? cols[6].replace(/"/g, '') : 'Drafting',
+                    assignee: cols[7] ? cols[7].replace(/"/g, '') : '',
+                    copy: cols[8] ? cols[8].replace(/"/g, '') : '',
+                    asset: cols[9] ? cols[9].replace(/"/g, '') : 'Single Image / Infographic',
+                    hashtags: cols[10] ? cols[10].replace(/"/g, '') : '',
+                    cta: cols[11] ? cols[11].replace(/"/g, '') : '',
+                    url: cols[12] ? cols[12].replace(/"/g, '') : '',
+                    impressions: Number(cols[13]) || 0,
+                    engagements: Number(cols[14]) || 0
+                  });
+                }
+              }
+              if (importedPosts.length > 0) {
+                posts = [...importedPosts, ...posts];
+                saveData();
+                renderCurrentView();
+                alert(`Imported ${importedPosts.length} posts from CSV!`);
+              }
+            }
+          }
+        } catch (err) {
+          alert("Error parsing file. Please check format.");
+          console.error(err);
+        }
+      };
+      reader.readAsText(file);
+    }
+
+    // Helper
+    function capitalize(s) {
+      return s.charAt(0).toUpperCase() + s.slice(1);
+    }
+
+    // Initialize App
+    window.addEventListener('DOMContentLoaded', () => {
+      initData();
+      renderCurrentView();
+    });
+  </script>
+</body>
+</html>

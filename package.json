@@ -1,0 +1,13 @@
+{
+  "name": "company-content-calendar",
+  "version": "1.0.0",
+  "description": "Interactive Company Content Calendar & Publishing Command Center",
+  "main": "index.html",
+  "scripts": {
+    "start": "npx serve . -p 8080",
+    "dev": "npx serve . -p 8080"
+  },
+  "keywords": ["content-calendar", "marketing", "social-media", "content-strategy"],
+  "author": "",
+  "license": "MIT"
+}
