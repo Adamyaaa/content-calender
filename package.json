@@ -4,8 +4,8 @@
   "description": "Interactive Company Content Calendar & Publishing Command Center",
   "main": "index.html",
   "scripts": {
-    "start": "npx serve . -p 8080",
-    "dev": "npx serve . -p 8080"
+    "start": "node server.js",
+    "dev": "node server.js"
   },
   "keywords": ["content-calendar", "marketing", "social-media", "content-strategy"],
   "author": "",

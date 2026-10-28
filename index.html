@@ -55,8 +55,9 @@
           </div>
           <div>
             <div class="flex items-center gap-2">
-              <h1 id="headerCompanyName" class="text-lg font-bold text-slate-900 tracking-tight">Acme Corp ContentOps</h1>
-              <span id="headerNicheBadge" class="text-xs bg-indigo-50 text-indigo-700 font-semibold px-2 py-0.5 rounded-full border border-indigo-200">B2B SaaS</span>
+              <h1 id="headerCompanyName" class="text-lg font-bold text-slate-900 tracking-tight">ContentOps</h1>
+              <span id="headerNicheBadge" class="text-xs bg-indigo-50 text-indigo-700 font-semibold px-2 py-0.5 rounded-full border border-indigo-200">Company</span>
+              <span id="headerStorageBadge" class="text-[10px] bg-slate-100 text-slate-600 font-medium px-2 py-0.5 rounded-full border border-slate-200">Checking DB...</span>
             </div>
             <p id="headerTagline" class="text-xs text-slate-500">Master Company Content Calendar & Publishing Command Center</p>
           </div>
@@ -854,24 +855,70 @@
     let currentView = 'calendar';
     let currentMonthDate = new Date();
     currentMonthDate.setDate(1); // Start on current month
+    let hasBackendDb = false;
+
+    // Check if SQLite Backend is available
+    async function checkBackendDb() {
+      try {
+        const res = await fetch('/api/health');
+        if (res.ok) {
+          const data = await res.json();
+          if (data.status === 'healthy') {
+            hasBackendDb = true;
+            updateStorageBadge(true);
+            return true;
+          }
+        }
+      } catch (e) {
+        // static hosting / no backend
+      }
+      hasBackendDb = false;
+      updateStorageBadge(false);
+      return false;
+    }
+
+    function updateStorageBadge(connected) {
+      const badge = document.getElementById('headerStorageBadge');
+      if (!badge) return;
+      if (connected) {
+        badge.className = "text-[10px] bg-emerald-50 text-emerald-700 font-semibold px-2 py-0.5 rounded-full border border-emerald-200 flex items-center gap-1";
+        badge.innerHTML = `<span class="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse"></span> SQLite DB`;
+      } else {
+        badge.className = "text-[10px] bg-slate-100 text-slate-600 font-medium px-2 py-0.5 rounded-full border border-slate-200";
+        badge.innerText = "Local Mode";
+      }
+    }
 
     // Initialization
-    function initData() {
-      // Load or initialize settings
-      const storedSettings = localStorage.getItem('company_content_settings_v1');
-      if (storedSettings) {
-        try { settings = JSON.parse(storedSettings); } catch(e) {}
-      }
-      applySettingsToUI();
+    async function initData() {
+      const dbOnline = await checkBackendDb();
 
-      // Check if user has already migrated to clean slate
-      const isCleanSlate = localStorage.getItem('company_content_cleaned_slate_v1');
-      if (!isCleanSlate) {
-        // Wipe old demo data on first load
-        posts = [];
-        localStorage.setItem('company_content_posts_v1', JSON.stringify([]));
-        localStorage.setItem('company_content_cleaned_slate_v1', 'true');
+      if (dbOnline) {
+        try {
+          // Fetch settings from SQLite
+          const resSettings = await fetch('/api/settings');
+          if (resSettings.ok) {
+            const dataSettings = await resSettings.json();
+            if (dataSettings && dataSettings.companyName) settings = dataSettings;
+          }
+          applySettingsToUI();
+
+          // Fetch posts from SQLite
+          const resPosts = await fetch('/api/posts');
+          if (resPosts.ok) {
+            posts = await resPosts.json();
+          }
+        } catch (e) {
+          console.error("Failed loading from DB, falling back to local:", e);
+        }
       } else {
+        // Fallback to LocalStorage
+        const storedSettings = localStorage.getItem('company_content_settings_v1');
+        if (storedSettings) {
+          try { settings = JSON.parse(storedSettings); } catch(e) {}
+        }
+        applySettingsToUI();
+
         const storedPosts = localStorage.getItem('company_content_posts_v1');
         if (storedPosts) {
           try { posts = JSON.parse(storedPosts); } catch(e) { posts = []; }
@@ -879,7 +926,9 @@
           posts = [];
         }
       }
-      saveData();
+
+      saveDataLocalOnly();
+      renderCurrentView();
     }
 
     function applySettingsToUI() {
@@ -900,9 +949,14 @@
       }
     }
 
-    function saveData() {
+    function saveDataLocalOnly() {
       localStorage.setItem('company_content_posts_v1', JSON.stringify(posts));
       updateKpis();
+    }
+
+    async function saveData() {
+      saveDataLocalOnly();
+      // If backend available, also sync
     }
 
     // View Switching
@@ -1212,7 +1266,7 @@
       }
     }
 
-    function handleDrop(event, targetStage) {
+    async function handleDrop(event, targetStage) {
       event.preventDefault();
       clearAllColumnHighlights();
 
@@ -1222,8 +1276,17 @@
       const post = posts.find(p => p.id === postId);
       if (post && post.status !== targetStage) {
         post.status = targetStage;
-        saveData();
+        saveDataLocalOnly();
         renderCurrentView();
+        if (hasBackendDb) {
+          try {
+            await fetch('/api/posts', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify(post)
+            });
+          } catch(e) { console.error("DB drop error:", e); }
+        }
       }
     }
 
@@ -1234,13 +1297,22 @@
       });
     }
 
-    function movePostStage(postId, newStage, event) {
+    async function movePostStage(postId, newStage, event) {
       if (event) event.stopPropagation();
       const p = posts.find(item => item.id === postId);
       if (p) {
         p.status = newStage;
-        saveData();
+        saveDataLocalOnly();
         renderCurrentView();
+        if (hasBackendDb) {
+          try {
+            await fetch('/api/posts', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify(p)
+            });
+          } catch(e) { console.error("DB move error:", e); }
+        }
       }
     }
 
@@ -1393,7 +1465,7 @@
       }
     }
 
-    function handleSavePost(event) {
+    async function handleSavePost(event) {
       event.preventDefault();
       const id = document.getElementById('postId').value;
       
@@ -1422,27 +1494,49 @@
         posts.unshift(newPost);
       }
 
-      saveData();
+      saveDataLocalOnly();
       closePostModal();
       renderCurrentView();
+
+      if (hasBackendDb) {
+        try {
+          await fetch('/api/posts', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(newPost)
+          });
+        } catch(e) { console.error("DB save error:", e); }
+      }
     }
 
-    function handleDeletePost() {
+    async function handleDeletePost() {
       const id = document.getElementById('postId').value;
       if (!id) return;
       if (confirm("Are you sure you want to delete this post?")) {
         posts = posts.filter(p => p.id !== id);
-        saveData();
+        saveDataLocalOnly();
         closePostModal();
         renderCurrentView();
+
+        if (hasBackendDb) {
+          try {
+            await fetch(`/api/posts/${id}`, { method: 'DELETE' });
+          } catch(e) { console.error("DB delete error:", e); }
+        }
       }
     }
 
-    function quickDeletePost(id) {
+    async function quickDeletePost(id) {
       if (confirm("Delete this content post?")) {
         posts = posts.filter(p => p.id !== id);
-        saveData();
+        saveDataLocalOnly();
         renderCurrentView();
+
+        if (hasBackendDb) {
+          try {
+            await fetch(`/api/posts/${id}`, { method: 'DELETE' });
+          } catch(e) { console.error("DB delete error:", e); }
+        }
       }
     }
 
@@ -1590,7 +1684,7 @@
       document.getElementById('settingsModal').classList.add('hidden');
     }
 
-    function handleSaveSettings(event) {
+    async function handleSaveSettings(event) {
       event.preventDefault();
       settings.companyName = document.getElementById('settingCompanyName').value.trim() || "ContentOps";
       settings.niche = document.getElementById('settingNiche').value.trim() || "B2B SaaS";
@@ -1603,14 +1697,30 @@
       applySettingsToUI();
       closeSettingsModal();
       renderCurrentView();
+
+      if (hasBackendDb) {
+        try {
+          await fetch('/api/settings', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(settings)
+          });
+        } catch(e) { console.error("DB settings error:", e); }
+      }
     }
 
-    function clearAllPosts() {
+    async function clearAllPosts() {
       if (confirm("Are you sure you want to clear all posts from the calendar?")) {
         posts = [];
-        saveData();
+        saveDataLocalOnly();
         renderCurrentView();
         closeSettingsModal();
+
+        if (hasBackendDb) {
+          try {
+            await fetch('/api/posts/clear', { method: 'POST' });
+          } catch(e) { console.error("DB clear error:", e); }
+        }
       }
     }
 
